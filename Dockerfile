@@ -8,7 +8,12 @@ USER root
 # Install jupyter notebook
 RUN apt-get update \
  && apt-get -y upgrade \
- && apt-get -y --no-install-recommends install jupyter-notebook
+ && apt-get -y --no-install-recommends install jupyter-notebook python3-pip g++
+
+RUN pip install numpy pandas matplotlib
+RUN pip install ipywidgets widgetsnbextension plotly optuna 
+RUN pip install networkx
+RUN pip install mip
 
 # Jupyter notebook hashed password
 ## $ python3
@@ -22,7 +27,7 @@ RUN apt-get update \
 # run the following script in the container,
 #
 # $ python3 scripts/pass.py
-ARG JUPYTER_PASSWD=''
+ARG JUPYTER_PASSWD='sha1:ad8c4d398f17:a36cce35eb85c12e438abcf5f44e35b161105a01'
 
 # User name
 ARG NB_USER='jupyter'
