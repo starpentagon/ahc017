@@ -17,7 +17,7 @@ SqDistScheduler::SqDistScheduler(int N, int D, int K)
 }
 
 void SqDistScheduler::MakeSchedule() {
-   CalcAllDist();
+   Prep();
 
    int M = edge_list_.size();
    schedule_.resize(M);
@@ -26,7 +26,7 @@ void SqDistScheduler::MakeSchedule() {
 
    int E = (M + D_ - 1) / D_;  // 1日あたりの工事件数
 
-   vector<bool> constructed(M, false);
+   EdgeBit constructed;
 
    auto get_edge_index_list = [&]() {
       vector<int> e_list;
@@ -55,6 +55,7 @@ void SqDistScheduler::MakeSchedule() {
       vector<int> construct_edge_index;
 
       if ((int)edge_index_list.size() <= E) {
+         // 残りをすべて工事できる場合
          construct_edge_index = edge_index_list;
 
          for (auto e : construct_edge_index) {

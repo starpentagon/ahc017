@@ -15,21 +15,24 @@ using ll = long long;
 Graph::Graph(int N)
     : N_(N), total_dist_(0) {
    node_sum_dist_.resize(N + 1, 0);
+   node_shortest_tree_.resize(N + 1);
+
    adj_list_.resize(N + 1);
 
    node_coord_.resize(N + 1);
 }
 
 void Graph::AddEdge(int u, int v, ll w) {
-   adj_list_[u].emplace_back(v, w);
-   adj_list_[v].emplace_back(u, w);
+   int i = (int)edge_list_.size();
+   adj_list_[u].emplace_back(i, v, w);
+   adj_list_[v].emplace_back(i, u, w);
 
    edge_list_.emplace_back(u, v, w);
 }
 
 // BFSで単一始点最短路を求める
 // 計算量: O(N+E)
-vector<long long> ShortestPathBFS(const vector<vector<pair<Node, ll>>>& adj_list, const int start, const vector<vector<bool>>& del_edge_flg) {
+vector<long long> ShortestPathBFS(const vector<vector<Adj>>& adj_list, const int start, const EdgeBit& del_edge_flg) {
    // 重みリストの初期化
    constexpr long long INF = DIST_INF;
    int L = (int)adj_list.size();
@@ -49,8 +52,8 @@ vector<long long> ShortestPathBFS(const vector<vector<pair<Node, ll>>>& adj_list
       if (min_weight_list[min_node] < min_weight) continue;
 
       // 隣接するノードうち未訪問のものを更新する
-      for (const auto [node_to, weight] : adj_list[min_node]) {
-         if (del_edge_flg[min_node][node_to]) continue;
+      for (const auto [edge_index, node_to, weight] : adj_list[min_node]) {
+         if (del_edge_flg[edge_index]) continue;
 
          if (min_weight_list[node_to] > min_weight + weight) {
             min_weight_list[node_to] = min_weight_list[min_node] + weight;
@@ -62,8 +65,8 @@ vector<long long> ShortestPathBFS(const vector<vector<pair<Node, ll>>>& adj_list
    return min_weight_list;
 }
 
-void Graph::CalcAllDist() {
-   vector<vector<bool>> del_edge_flg(N_ + 1, vector<bool>(N_ + 1, false));
+void Graph::Prep() {
+   EdgeBit del_edge_flg;
 
    for (Node s = 1; s <= N_; s++) {
       auto min_dist = ShortestPathBFS(adj_list_, s, del_edge_flg);
@@ -75,23 +78,27 @@ void Graph::CalcAllDist() {
       }
 
       node_sum_dist_[s] = node_dist;
+
+      SetShortestTree(s, s, -1, min_dist);
    }
 }
 
 pair<ll, int> Graph::CalcCost(const std::vector<int>& del_edge_list) const {
-   vector<vector<bool>> del_edge_flg(N_ + 1, vector<bool>(N_ + 1, false));
-   int disconnected_count = 0;
+   EdgeBit del_edge_flg;
 
    for (auto e : del_edge_list) {
-      const auto [u, v, w] = edge_list_[e];
-
-      del_edge_flg[u][v] = true;
-      del_edge_flg[v][u] = true;
+      del_edge_flg.set(e);
    }
+
+   int disconnected_count = 0;
 
    ll cost = 0;
 
    for (Node s = 1; s <= N_; s++) {
+      EdgeBit shortest_change_bit = del_edge_flg & node_shortest_tree_[s];
+
+      if (shortest_change_bit.none()) continue;
+
       auto min_dist = ShortestPathBFS(adj_list_, s, del_edge_flg);
 
       ll node_dist = 0;
@@ -135,4 +142,15 @@ long long Graph::CalcEdgeSqDist(const Edge& edge_1, const Edge& edge_2) const {
    chmin(edge_dist, CalcNodeSqDist(v_1, v_2));
 
    return edge_dist;
+}
+
+void Graph::SetShortestTree(Node start, Node node, Node p, const std::vector<long long>& min_dist) {
+   for (auto [edge_index, n_node, w] : adj_list_[node]) {
+      if (n_node == p) continue;
+
+      if (min_dist[n_node] != min_dist[node] + w) continue;
+      node_shortest_tree_[start].set(edge_index);
+
+      SetShortestTree(start, n_node, node, min_dist);
+   }
 }

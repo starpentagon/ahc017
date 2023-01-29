@@ -2,10 +2,16 @@
 
 #include <vector>
 #include <tuple>
+#include <set>
+#include <bitset>
 
 using Node = int;
 using Edge = std::tuple<Node, Node, long long>;  // from, to, dist
+using Adj = std::tuple<int, Node, long long>;    // edge index, to, dist
 using Coord = std::pair<int, int>;
+
+static constexpr int MaxEdge = 3000;
+using EdgeBit = std::bitset<MaxEdge + 1>;
 
 static constexpr long long DIST_INF = 1000000000;
 
@@ -23,8 +29,10 @@ class Graph {
    // ノードの座標を設定する
    void SetNodeCoord(Node u, int x, int y);
 
-   // 2ノード間距離の総和を求める
-   void CalcAllDist();
+   // 前処理を行う
+   // - 2ノード間距離の総和を求める
+   // - 最短路木を求める
+   void Prep();
 
    // 辺を削除した時の不満度と非連結なノードペア数を求める
    std::pair<long long, int> CalcCost(const std::vector<int>& del_edge_index_list) const;
@@ -36,11 +44,15 @@ class Graph {
   protected:
    int N_;
 
-   long long total_dist_;                  // ノード間距離の総和
-   std::vector<long long> node_sum_dist_;  // node_sum_dist_[n]: ノードnからの距離の総和
+   // 最短路木を構築する
+   void SetShortestTree(Node start, Node node, Node p, const std::vector<long long>& min_dist);
 
-   std::vector<Edge> edge_list_;                                    // 辺リスト
-   std::vector<std::vector<std::pair<Node, long long>>> adj_list_;  // 隣接リスト
+   long long total_dist_;                     // ノード間距離の総和
+   std::vector<long long> node_sum_dist_;     // node_sum_dist_[n]: ノードnからの距離の総和
+   std::vector<EdgeBit> node_shortest_tree_;  // node_shortest_tree_[n]: ノードnの最短路木(edge indexの集合)
+
+   std::vector<Edge> edge_list_;             // 辺リスト
+   std::vector<std::vector<Adj>> adj_list_;  // 隣接リスト
 
    std::vector<Coord> node_coord_;  // ノードの座標
 };

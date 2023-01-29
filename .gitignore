@@ -37,3 +37,5 @@ main
 
 *.csv
 .ipynb_checkpoints
+
+01_testset/
