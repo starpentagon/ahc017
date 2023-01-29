@@ -51,6 +51,8 @@ class Graph {
    std::vector<long long> node_sum_dist_;     // node_sum_dist_[n]: ノードnからの距離の総和
    std::vector<EdgeBit> node_shortest_tree_;  // node_shortest_tree_[n]: ノードnの最短路木(edge indexの集合)
 
+   std::vector<EdgeBit> edge_bypass_;  // edge_bypass_[e]: 辺eを削除した際の迂回路(edge indexの集合)
+
    std::vector<Edge> edge_list_;             // 辺リスト
    std::vector<std::vector<Adj>> adj_list_;  // 隣接リスト
 

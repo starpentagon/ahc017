@@ -1,3 +1,4 @@
+#include <cassert>
 #include <iostream>
 #include <queue>
 
@@ -32,7 +33,7 @@ void Graph::AddEdge(int u, int v, ll w) {
 
 // BFSで単一始点最短路を求める
 // 計算量: O(N+E)
-vector<long long> ShortestPathBFS(const vector<vector<Adj>>& adj_list, const int start, const EdgeBit& del_edge_flg) {
+vector<long long> ShortestPathBFS(const vector<vector<Adj>>& adj_list, const int start, const EdgeBit& del_edge_flg, const int end = -1) {
    // 重みリストの初期化
    constexpr long long INF = DIST_INF;
    int L = (int)adj_list.size();
@@ -51,6 +52,10 @@ vector<long long> ShortestPathBFS(const vector<vector<Adj>>& adj_list, const int
 
       if (min_weight_list[min_node] < min_weight) continue;
 
+      if (min_node == end) {
+         break;
+      }
+
       // 隣接するノードうち未訪問のものを更新する
       for (const auto [edge_index, node_to, weight] : adj_list[min_node]) {
          if (del_edge_flg[edge_index]) continue;
@@ -65,8 +70,34 @@ vector<long long> ShortestPathBFS(const vector<vector<Adj>>& adj_list, const int
    return min_weight_list;
 }
 
+// ノード間の最短経路を求める(重み付き用)
+// @param start, node: 最短経路を求めるノード
+// @param min_weight_list: startから各ノードの最短距離が格納されたテーブル
+// @retval node_path: startノードからendノードまでの最短経路順に並べたノードリスト
+// @note 計算量: O(E)
+// Unverified
+EdgeBit FindShortestPath(const int start, const int end, const vector<vector<Adj>>& adj_list, const vector<long long>& min_weight_list, const EdgeBit& del_edge_flg) {
+   int node = end;
+   EdgeBit path_bit;
+
+   while (node != start) {
+      for (auto [edge_index, to, weight] : adj_list[node]) {
+         if (del_edge_flg[edge_index]) continue;
+
+         if (min_weight_list[node] >= min_weight_list[to] + weight) {
+            node = to;
+            path_bit.set(edge_index);
+            break;
+         }
+      }
+   }
+
+   return path_bit;
+}
+
 void Graph::Prep() {
    EdgeBit del_edge_flg;
+   edge_bypass_.resize(edge_list_.size());
 
    for (Node s = 1; s <= N_; s++) {
       auto min_dist = ShortestPathBFS(adj_list_, s, del_edge_flg);
@@ -80,6 +111,18 @@ void Graph::Prep() {
       node_sum_dist_[s] = node_dist;
 
       SetShortestTree(s, s, -1, min_dist);
+   }
+
+   // 辺eを削除した場合の迂回路を求める
+   rep(e, edge_list_.size()) {
+      auto [u, v, w] = edge_list_[e];
+
+      del_edge_flg[e] = 1;
+
+      auto min_dist = ShortestPathBFS(adj_list_, u, del_edge_flg, v);
+      edge_bypass_[e] = FindShortestPath(u, v, adj_list_, min_dist, del_edge_flg);
+
+      del_edge_flg[e] = 0;
    }
 }
 

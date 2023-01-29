@@ -1,4 +1,5 @@
 #include <iostream>
+#include "Graph.hpp"
 #include "SqDistScheduler.hpp"
 
 using namespace std;
