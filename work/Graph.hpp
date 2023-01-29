@@ -26,8 +26,8 @@ class Graph {
    // 2ノード間距離の総和を求める
    void CalcAllDist();
 
-   // 辺を削除した時の不満度を求める
-   long long CalcCost(const std::vector<int>& del_edge_index_list) const;
+   // 辺を削除した時の不満度と非連結なノードペア数を求める
+   std::pair<long long, int> CalcCost(const std::vector<int>& del_edge_index_list) const;
 
    // ノード間の平方距離
    long long CalcNodeSqDist(Node u, Node v) const;

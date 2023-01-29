@@ -33,7 +33,10 @@ int main() {
    auto schedule = scheduler.GetSchedule();
    cout << schedule << endl;
 
-   cerr << scheduler.CalcScheduleCost() << endl;
-
+#ifdef LOCAL
+   cerr << "Cost=" << scheduler.CalcScheduleCost() << ' ';
+   cerr << "DisconCnt=" << scheduler.CalcScheduleDisconCount() << ' ';
+   cerr << endl;
+#endif
    return 0;
 }

@@ -32,3 +32,8 @@
 *.app
 
 scripts
+seed*.txt
+main
+
+*.csv
+.ipynb_checkpoints

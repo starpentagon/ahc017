@@ -22,6 +22,7 @@ void SqDistScheduler::MakeSchedule() {
    int M = edge_list_.size();
    schedule_.resize(M);
    daily_cost_.resize(D_);
+   daily_discon_count_.resize(D_);
 
    int E = (M + D_ - 1) / D_;  // 1日あたりの工事件数
 
@@ -105,7 +106,10 @@ void SqDistScheduler::MakeSchedule() {
          schedule_[e] = d + 1;
       }
 
-      daily_cost_[d] = CalcCost(construct_edge_index);
+      auto [cost, discon_count] = CalcCost(construct_edge_index);
+
+      daily_cost_[d] = cost;
+      daily_discon_count_[d] = discon_count;
    }
 }
 
@@ -114,4 +118,9 @@ long long SqDistScheduler::CalcScheduleCost() const {
    sum_cost /= D_;
 
    return sum_cost;
+}
+
+int SqDistScheduler::CalcScheduleDisconCount() const {
+   ll sum_count = accumulate(daily_discon_count_.begin(), daily_discon_count_.end(), 0);
+   return sum_count;
 }

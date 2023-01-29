@@ -27,40 +27,33 @@ void Graph::AddEdge(int u, int v, ll w) {
    edge_list_.emplace_back(u, v, w);
 }
 
-// ダイクストラ法で単一始点最短路を求める
-// @pre 各エッジの重みが非負であること
-// 計算量: O(E + N log N)
-// 非連結成分には numeric_limits<long long>::max() が設定される
-vector<long long> ShortestPathDijkstra(const vector<vector<pair<Node, ll>>>& adj_list, const int start, const vector<vector<bool>>& del_edge_flg) {
+// BFSで単一始点最短路を求める
+// 計算量: O(N+E)
+vector<long long> ShortestPathBFS(const vector<vector<pair<Node, ll>>>& adj_list, const int start, const vector<vector<bool>>& del_edge_flg) {
    // 重みリストの初期化
-   int L = (int)adj_list.size();
    constexpr long long INF = DIST_INF;
+   int L = (int)adj_list.size();
    vector<long long> min_weight_list(L, INF);
 
-   // 重み最小のノードを管理
-   using WeightNode = pair<long long, int>;  // (startからの最小重み, ノード番号)
-   priority_queue<WeightNode, vector<WeightNode>, greater<WeightNode>> node_queue;
-
    min_weight_list[start] = 0;
+
+   // 最短路が求まったノードを管理する
+   using WeightNode = pair<long long, int>;  // (startからの最小重み, ノード番号)
+   queue<WeightNode> node_queue;
    node_queue.emplace(0, start);
 
    while (!node_queue.empty()) {
-      const auto [min_weight, min_node] = node_queue.top();
+      const auto [min_weight, min_node] = node_queue.front();
       node_queue.pop();
 
-      // すでに更新済みの場合はskip
-      // - skipしないとO(N^2)となるケースが存在
-      // see: https://snuke.hatenablog.com/entry/2021/02/22/102734
-      if (min_weight_list[min_node] < min_weight) {
-         continue;
-      }
+      if (min_weight_list[min_node] < min_weight) continue;
 
-      // 重み最小のノードに隣接するノードを更新できるかチェック
-      for (const auto& [node_to, weight] : adj_list[min_node]) {
+      // 隣接するノードうち未訪問のものを更新する
+      for (const auto [node_to, weight] : adj_list[min_node]) {
          if (del_edge_flg[min_node][node_to]) continue;
 
          if (min_weight_list[node_to] > min_weight + weight) {
-            min_weight_list[node_to] = min_weight + weight;
+            min_weight_list[node_to] = min_weight_list[min_node] + weight;
             node_queue.emplace(min_weight_list[node_to], node_to);
          }
       }
@@ -73,7 +66,7 @@ void Graph::CalcAllDist() {
    vector<vector<bool>> del_edge_flg(N_ + 1, vector<bool>(N_ + 1, false));
 
    for (Node s = 1; s <= N_; s++) {
-      auto min_dist = ShortestPathDijkstra(adj_list_, s, del_edge_flg);
+      auto min_dist = ShortestPathBFS(adj_list_, s, del_edge_flg);
 
       ll node_dist = 0;
 
@@ -85,8 +78,9 @@ void Graph::CalcAllDist() {
    }
 }
 
-ll Graph::CalcCost(const std::vector<int>& del_edge_list) const {
+pair<ll, int> Graph::CalcCost(const std::vector<int>& del_edge_list) const {
    vector<vector<bool>> del_edge_flg(N_ + 1, vector<bool>(N_ + 1, false));
+   int disconnected_count = 0;
 
    for (auto e : del_edge_list) {
       const auto [u, v, w] = edge_list_[e];
@@ -98,18 +92,22 @@ ll Graph::CalcCost(const std::vector<int>& del_edge_list) const {
    ll cost = 0;
 
    for (Node s = 1; s <= N_; s++) {
-      auto min_dist = ShortestPathDijkstra(adj_list_, s, del_edge_flg);
+      auto min_dist = ShortestPathBFS(adj_list_, s, del_edge_flg);
 
       ll node_dist = 0;
 
       for (Node t = 1; t <= N_; t++) {
          node_dist += min_dist[t];
+
+         if (min_dist[t] == DIST_INF) {
+            disconnected_count++;
+         }
       }
 
       cost += node_dist - node_sum_dist_[s];
    }
 
-   return 1000 * cost / (N_ * (N_ - 1));
+   return {1000 * cost / (N_ * (N_ - 1)), disconnected_count};
 }
 
 void Graph::SetNodeCoord(int u, int x, int y) {
