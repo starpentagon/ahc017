@@ -1,6 +1,6 @@
 #include <numeric>
 #include "SqDistScheduler.hpp"
-#include "debug.hpp"
+#include "UnionFind.hpp"
 
 using namespace std;
 
@@ -17,7 +17,7 @@ SqDistScheduler::SqDistScheduler(int N, int D, int K)
     : Graph(N), D_(D), K_(K) {
 }
 
-void SqDistScheduler::MakeSchedule() {
+void SqDistScheduler::MakeSchedule(const vector<EdgeBit> &day_avail_edge_bit) {
    Prep();
 
    int M = edge_list_.size();
@@ -30,12 +30,13 @@ void SqDistScheduler::MakeSchedule() {
    EdgeBit constructed;  // 工事済の辺
    EdgeBit plan_bypass;  // 工事予定の辺の迂回路
 
-   auto get_edge_index_list = [&]() {
+   auto get_edge_index_list = [&](int d) {
       vector<int> e_list;
       e_list.reserve(M);
 
       rep(e, M) {
          if (constructed[e]) continue;
+         if (!day_avail_edge_bit[d][e]) continue;
          e_list.emplace_back(e);
       }
       return e_list;
@@ -58,8 +59,8 @@ void SqDistScheduler::MakeSchedule() {
    };
 
    // 未工事の辺
-   auto calc_construct_edge = [&]() {
-      auto edge_index_list = get_edge_index_list();
+   auto calc_construct_edge = [&](int d) {
+      auto edge_index_list = get_edge_index_list(d);
 
       vector<int> plan_edge_index;
       EdgeBit bypass_bit;
@@ -73,11 +74,25 @@ void SqDistScheduler::MakeSchedule() {
          return plan_edge_index;
       }
 
+      vector<int> edge_avail_cnt(M, 0);
+
+      for (int i = d; i < D_; i++) {
+         for (auto e : edge_index_list) {
+            if (day_avail_edge_bit[i][e]) edge_avail_cnt[e]++;
+         }
+      }
+
+      for (auto e : edge_index_list) {
+         if (edge_avail_cnt[e] == 1) {
+            add_edge_to_plan(e, plan_edge_index, bypass_bit);
+         }
+      }
+
       plan_edge_index.reserve(E);
 
-      {
+      if (plan_edge_index.empty()) {
          // 工事日の順序性はないので未工事の辺の先頭を工事するとしてよい
-         int e = edge_index_list[0];
+         auto e = edge_index_list[0];
          add_edge_to_plan(e, plan_edge_index, bypass_bit);
       }
 
@@ -85,7 +100,7 @@ void SqDistScheduler::MakeSchedule() {
          int ne = -1;
          ll max_min_dist = -1;
 
-         rep(e, M) {
+         for (auto e : edge_index_list) {
             if (constructed[e]) continue;
 
             ll min_dist = DIST_INF;
@@ -113,7 +128,7 @@ void SqDistScheduler::MakeSchedule() {
 
    rep(d, D_) {
       // 未工事の枝を1つ決める
-      auto construct_edge_index = calc_construct_edge();
+      auto construct_edge_index = calc_construct_edge(d);
 
       for (auto e : construct_edge_index) {
          schedule_[e] = d + 1;
@@ -127,6 +142,39 @@ void SqDistScheduler::MakeSchedule() {
 
    // debug(daily_cost_);
    // debug(daily_discon_count_);
+}
+
+EdgeBit SqDistScheduler::CalcAvailEdgeWithConnection(int d, const EdgeBit &constructed_edge) const {
+   UnionFind uf(N_);
+   EdgeBit avail_bit;
+
+   int remain_day = D_ - d;
+   int unconstructed_edge = (int)edge_list_.size() - constructed_edge.count();
+   int min_construct_edge = (unconstructed_edge + remain_day - 1) / remain_day;
+
+   rep(e, edge_list_.size()) {
+      auto [u, v, w] = edge_list_[e];
+
+      if (constructed_edge[e]) {
+         uf.Unite(u, v);
+      }
+   }
+
+   rep(e, edge_list_.size()) {
+      if (constructed_edge[e]) continue;
+      auto [u, v, w] = edge_list_[e];
+
+      if (unconstructed_edge > min_construct_edge && !uf.IsSameGroup(u, v)) {
+         uf.Unite(u, v);
+         unconstructed_edge--;
+      } else {
+         avail_bit[e] = 1;
+      }
+   }
+
+   // debug(d, min_construct_edge, avail_bit.count());
+
+   return avail_bit;
 }
 
 long long SqDistScheduler::CalcScheduleCost() const {

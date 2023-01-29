@@ -1,5 +1,8 @@
 #include <iostream>
+#include "UnionFind.hpp"
+#include "XorShift.hpp"
 #include "Graph.hpp"
+#include "ConnectionSet.hpp"
 #include "SqDistScheduler.hpp"
 
 using namespace std;
@@ -13,12 +16,14 @@ int main() {
    int N, M, D, K;
    cin >> N >> M >> D >> K;
 
+   ConnectionSet connector(N, D);
    SqDistScheduler scheduler(N, D, K);
 
    rep(i, M) {
       int u, v, w;
       cin >> u >> v >> w;
 
+      connector.AddEdge(u, v, w);
       scheduler.AddEdge(u, v, w);
    }
 
@@ -29,7 +34,8 @@ int main() {
       scheduler.SetNodeCoord(i + 1, x, y);
    }
 
-   scheduler.MakeSchedule();
+   auto day_avail_edge_bit = connector.CalcAvailEdgeSet();
+   scheduler.MakeSchedule(day_avail_edge_bit);
 
    auto schedule = scheduler.GetSchedule();
    cout << schedule << endl;
