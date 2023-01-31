@@ -172,7 +172,13 @@ BySetSA_Trans BypassSetScheduler::GenerateTransition() {
       }
    }
 
-   int e = bypass_set_.SelectInBypassEdge(avail_one_edge_);
+   int rnd = XorShift() % 100;
+   int e = -1;
+   if (rnd < kBySetSA_DefaultSelectInBypass) {
+      e = bypass_set_.SelectInBypassEdge(avail_one_edge_);
+   } else {
+      e = bypass_set_.SelectBypassGeneratorEdge(avail_one_edge_);
+   }
 
    if (e == -1) {
       return {-1, -1, -1};

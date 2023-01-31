@@ -117,6 +117,25 @@ int BypassSet::SelectInBypassEdge(const EdgeBit &avail_one_edge) const {
    return edge_list[ind];
 }
 
+int BypassSet::SelectBypassGeneratorEdge(const EdgeBit &avail_one_edge) const {
+   int E = graph_.GetEdgeList().size();
+   vector<int> edge_list;
+
+   rep(e, E) {
+      if (avail_one_edge[e]) continue;
+      if (!in_bypass_edge_list_[e].empty()) edge_list.emplace_back(e);
+   }
+
+   if (edge_list.empty()) {
+      return -1;
+   }
+
+   assert(!edge_list.empty());
+
+   int ind = XorShift() % edge_list.size();
+   return edge_list[ind];
+}
+
 int BypassSet::GetDay(int e) const {
    rep(d, D_) if (day_edge_bit_[d][e]) return d;
    return -1;

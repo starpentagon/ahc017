@@ -24,6 +24,10 @@ class BypassSet {
    // 迂回路集合中に辺がない場合はassert and -1を返す
    int SelectInBypassEdge(const EdgeBit& avail_one_edge) const;
 
+   // 迂回路集合に辺を持つ(day, edge)をランダムに返す
+   // 迂回路集合に辺を持つ辺がない場合はassert and -1を返す
+   int SelectBypassGeneratorEdge(const EdgeBit& avail_one_edge) const;
+
    // 工事日に含まれる辺の数を返す
    int GetDayEdgeCount(int d) const {
       return day_edge_bit_[d].count();

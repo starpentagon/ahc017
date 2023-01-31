@@ -13,8 +13,8 @@ enum BySetSA_TransType {
 };
 
 // 遷移確率
-static constexpr int kBySetSA_DefaultSelectInBypass = 95;
-static constexpr int kBySetSA_DefaultSelectBypassGenerator = 5;
+static constexpr int kBySetSA_DefaultSelectInBypass = 50;
+static constexpr int kBySetSA_DefaultSelectBypassGenerator = 100 - kBySetSA_DefaultSelectInBypass;
 
 // コスト関数
 static constexpr int kBySetSA_EdgeInBypass = 1;  // 迂回路集合中の工事予定辺数

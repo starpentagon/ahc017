@@ -4,7 +4,7 @@
 #include "XorShift.hpp"
 #include "Graph.hpp"
 #include "ConnectionSet.hpp"
-#include "SqDistScheduler.hpp"
+#include "BypassSet.hpp"
 #include "BypassSetScheduler.hpp"
 
 using namespace std;

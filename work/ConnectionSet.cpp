@@ -23,17 +23,24 @@ int ConnectionSet::CalcCost(const vector<EdgeBit> &day_connection_set) const {
    int cost = 0;
 
    // 辺ごとの工事可能な日数に対するコスト
+   vector<vector<int>> day_avail_one_edge_list(D_);
+
    rep(e, edge_list_.size()) {
       int avail_count = 0;
+      int avail_day = -1;
 
       rep(d, D_) {
-         if (day_connection_set[d][e] == 0) avail_count++;
+         if (day_connection_set[d][e] == 0) {
+            avail_count++;
+            avail_day = d;
+         }
       }
 
       if (avail_count == 0) {
          cost += kCostNonAvailable;
       } else if (avail_count == 1) {
          cost += kCostOneAvailable;
+         day_avail_one_edge_list[avail_day].emplace_back(e);
       } else if (avail_count == 2) {
          cost += kCostTwoAvailable;
       }
@@ -43,6 +50,18 @@ int ConnectionSet::CalcCost(const vector<EdgeBit> &day_connection_set) const {
    rep(d, D_) {
       cost += kCostConnect * day_connection_set[d].count();
    }
+
+   // 工事可能日が1日のもので迂回路集合に辺が入っていないかチェックする
+   int dummy_K = 3000;
+   BypassSet bypass_set(D_, dummy_K, *this);
+
+   rep(d, D_) {
+      for (auto e : day_avail_one_edge_list[d]) {
+         bypass_set.AddEdge(d, e);
+      }
+   }
+
+   cost += kCostOneAvailableInBypass * bypass_set.InBypassEdgeCount();
 
    return cost;
 }
@@ -117,7 +136,7 @@ Trans ConnectionSet::GenerateTransition() {
 
 vector<EdgeBit> ConnectionSet::CalcAvailEdgeSet() {
    uniform_real_distribution<> uniform_dist(0.0, 1.0);
-   static constexpr int kMaxCount = 500;
+   static constexpr int kMaxCount = 1000;
 
    // 初期化
    Prep();

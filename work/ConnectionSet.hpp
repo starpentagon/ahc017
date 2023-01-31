@@ -16,10 +16,12 @@ static constexpr int kDefaultSelectNotAvailable = 95;
 static constexpr int kDefaultSelectAvailable = 5;
 
 // コスト関数
-static constexpr int kCostNonAvailable = 3000;  // 工事可能な回数が0回の辺のコスト
-static constexpr int kCostOneAvailable = 30;    // 工事可能な回数が1回の辺のコスト
-static constexpr int kCostTwoAvailable = 5;     // 工事可能な回数が2回の辺のコスト
-static constexpr int kCostConnect = 1;          // 連結集合のサイズのコスト(距離最小化の自由度を残すため連結集合のサイズは小さい方が良い)
+static constexpr int kCostNonAvailable = 3000;              // 工事可能な回数が0回の辺のコスト
+static constexpr int kCostOneAvailable = 30;                // 工事可能な回数が1回の辺のコスト
+static constexpr int kCostTwoAvailable = 5;                 // 工事可能な回数が2回の辺のコスト
+static constexpr int kCostOneAvailableInBypass = 1 * 2000;  // 工事可能な回数が1回の辺が迂回路集合に入っている場合のコスト
+
+static constexpr int kCostConnect = 1;  // 連結集合のサイズのコスト(距離最小化の自由度を残すため連結集合のサイズは小さい方が良い)
 
 // 焼きなまし法のパラメタ
 static constexpr int kDefaultMaxTemp = 2011;
