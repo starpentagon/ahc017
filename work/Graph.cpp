@@ -1,3 +1,5 @@
+#include <cmath>
+#include <algorithm>
 #include <cassert>
 #include <iostream>
 #include <queue>
@@ -158,6 +160,32 @@ pair<ll, int> Graph::CalcCost(const std::vector<int>& del_edge_list) const {
    }
 
    return {1000 * cost / (N_ * (N_ - 1)), disconnected_count};
+}
+
+pair<long long, int> Graph::CalcScheduleCost(const std::vector<int>& schedule) const {
+   ll cost = 0;
+   int discon_cnt = 0;
+
+   int D = *max_element(schedule.begin(), schedule.end());
+
+   for (int d = 1; d <= D; d++) {
+      vector<int> edge_list;
+
+      rep(e, edge_list_.size()) {
+         if (schedule[e] == d) {
+            edge_list.emplace_back(e);
+         }
+      }
+
+      auto [day_cost, day_discon] = CalcCost(edge_list);
+
+      cost += day_cost;
+      discon_cnt += day_discon;
+   }
+
+   cost = (int)round(1.0 * cost / D);
+
+   return {cost, discon_cnt};
 }
 
 void Graph::SetNodeCoord(int u, int x, int y) {

@@ -1,5 +1,6 @@
 #include "UnionFind.hpp"
 #include "XorShift.hpp"
+#include "BypassSet.hpp"
 #include "ConnectionSet.hpp"
 
 using namespace std;
@@ -193,4 +194,86 @@ vector<EdgeBit> ConnectionSet::CalcAvailEdgeSet() {
    }
 
    return day_avail_edge_bit;
+}
+
+int ConnectionSet::DisconnectedDayCount() const {
+   int discon_day = 0;
+   int E = (int)edge_list_.size();
+
+   rep(d, D_) {
+      UnionFind uf(N_);
+
+      rep(e, E) {
+         if (day_connection_set_[d][e] == 1) {
+            auto [u, v, w] = edge_list_[e];
+            uf.Unite(u, v);
+         }
+      }
+
+      if ((int)uf.size(1) != N_) {
+         discon_day++;
+      }
+   }
+
+   return discon_day;
+}
+
+int ConnectionSet::AvailCountEdge(int count) const {
+   // 辺の工事可能な日数
+   int edge_count = 0;
+   int E = (int)edge_list_.size();
+
+   rep(e, E) {
+      int avail_count = 0;
+
+      rep(d, D_) {
+         if (day_connection_set_[d][e] == 0) avail_count++;
+      }
+
+      if (avail_count == count) edge_count++;
+   }
+
+   return edge_count;
+}
+
+double ConnectionSet::ScheduleRoom() const {
+   int E = (int)edge_list_.size();
+   int average_edge = (E + D_ - 1) / D_;
+   double min_schedule_room = D_;
+
+   rep(d, D_) {
+      int avail_edge_cnt = 0;
+
+      rep(e, E) if (day_connection_set_[d][e] == 0) avail_edge_cnt++;
+
+      double schedule_room = 1.0 * avail_edge_cnt / average_edge;
+      chmin(min_schedule_room, schedule_room);
+   }
+
+   return min_schedule_room;
+}
+
+int ConnectionSet::AvailOneEdgeInBypassCount() const {
+   int dummy_K = 3000;
+   BypassSet bypass_set(D_, dummy_K, *this);
+
+   int E = (int)edge_list_.size();
+
+   rep(e, E) {
+      int avail_count = 0;
+      int avail_day = -1;
+
+      rep(d, D_) {
+         if (day_connection_set_[d][e] == 0) {
+            avail_day = d;
+            avail_count++;
+         }
+      }
+
+      if (avail_count == 1) {
+         bypass_set.AddEdge(avail_day, e);
+      }
+   }
+
+   return bypass_set.InBypassEdgeCount();
 }

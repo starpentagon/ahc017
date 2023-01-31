@@ -15,7 +15,7 @@ enum TransType {
 static constexpr int kDefaultSelectNotAvailable = 95;
 static constexpr int kDefaultSelectAvailable = 5;
 
-// 評価関数
+// コスト関数
 static constexpr int kCostNonAvailable = 3000;  // 工事可能な回数が0回の辺のコスト
 static constexpr int kCostOneAvailable = 30;    // 工事可能な回数が1回の辺のコスト
 static constexpr int kCostTwoAvailable = 5;     // 工事可能な回数が2回の辺のコスト
@@ -35,6 +35,18 @@ class ConnectionSet
 
    // 日別の工事可能な辺集合を求める
    std::vector<EdgeBit> CalcAvailEdgeSet();
+
+   // 非連結な日数を返す
+   int DisconnectedDayCount() const;
+
+   // 工事可能な回数がcount回の辺数を返す
+   int AvailCountEdge(int count) const;
+
+   // 工事可能な回数が1回の辺のうち迂回路集合に入る辺の数を返す
+   int AvailOneEdgeInBypassCount() const;
+
+   // スケジュールの余裕度を返す
+   double ScheduleRoom() const;
 
   protected:
    // 連結な辺集合を初期化する

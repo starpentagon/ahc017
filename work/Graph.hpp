@@ -36,10 +36,19 @@ class Graph {
 
    // 辺を削除した時の不満度と非連結なノードペア数を求める
    std::pair<long long, int> CalcCost(const std::vector<int>& del_edge_index_list) const;
+   std::pair<long long, int> CalcScheduleCost(const std::vector<int>& schedule) const;
 
    // ノード間の平方距離
    long long CalcNodeSqDist(Node u, Node v) const;
    long long CalcEdgeSqDist(const Edge& edge_1, const Edge& edge_2) const;
+
+   const std::vector<Edge>& GetEdgeList() const {
+      return edge_list_;
+   }
+
+   const EdgeBit& GetBypassBit(const int e) const {
+      return edge_bypass_[e];
+   }
 
   protected:
    int N_;

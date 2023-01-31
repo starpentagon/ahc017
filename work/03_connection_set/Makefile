@@ -7,13 +7,14 @@ CC = ccache g++
 CFLAGS = -Wall --std=c++17 -O2 -DLOCAL
 #CFLAGS = -pg -g -Wall --std=c++17 -O0
 
-ALL: main.o Graph.o ConnectionSet.o XorShift.o UnionFind.o
+ALL: main.o Graph.o ConnectionSet.o XorShift.o UnionFind.o BypassSet.o
 	$(CC) $(CFLAGS) -o main \
 	main.o \
 	Graph.o \
 	ConnectionSet.o \
 	XorShift.o \
 	UnionFind.o \
+	 BypassSet.o \
 
 clean:
 	rm main *.o
@@ -31,6 +32,9 @@ XorShift.o: ../XorShift.cpp
 	$(CC) $(CFLAGS) -o $@ -c $<
 
 UnionFind.o: ../UnionFind.cpp
+	$(CC) $(CFLAGS) -o $@ -c $<
+
+BypassSet.o: ../BypassSet.cpp
 	$(CC) $(CFLAGS) -o $@ -c $<
 
 .cpp.o:
