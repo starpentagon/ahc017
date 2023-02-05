@@ -100,6 +100,7 @@ EdgeBit FindShortestPath(const int start, const int end, const vector<vector<Adj
 void Graph::Prep() {
    EdgeBit del_edge_flg;
    edge_bypass_.resize(edge_list_.size());
+   edge_betweenness_.resize(edge_list_.size(), 0);
 
    for (Node s = 1; s <= N_; s++) {
       auto min_dist = ShortestPathBFS(adj_list_, s, del_edge_flg);
@@ -152,6 +153,11 @@ pair<ll, int> Graph::CalcCost(const std::vector<int>& del_edge_list) const {
          node_dist += min_dist[t];
 
          if (min_dist[t] == DIST_INF) {
+            // debug
+            /*
+            cerr << "Node:" << s << ' ' << t << endl;
+            */
+            //--debug
             disconnected_count++;
          }
       }
@@ -159,14 +165,12 @@ pair<ll, int> Graph::CalcCost(const std::vector<int>& del_edge_list) const {
       cost += node_dist - node_sum_dist_[s];
    }
 
-   return {1000 * cost / (N_ * (N_ - 1)), disconnected_count};
+   return {1000LL * cost / (N_ * (N_ - 1)), disconnected_count};
 }
 
-pair<long long, int> Graph::CalcScheduleCost(const std::vector<int>& schedule) const {
+pair<long long, int> Graph::CalcScheduleCost(int D, const std::vector<int>& schedule) const {
    ll cost = 0;
    int discon_cnt = 0;
-
-   int D = *max_element(schedule.begin(), schedule.end());
 
    for (int d = 1; d <= D; d++) {
       vector<int> edge_list;
@@ -179,11 +183,24 @@ pair<long long, int> Graph::CalcScheduleCost(const std::vector<int>& schedule) c
 
       auto [day_cost, day_discon] = CalcCost(edge_list);
 
+      // debug
+      /*
+      if (day_discon > 0) {
+         cerr << d << endl;
+         for (auto e : edge_list) {
+            cerr << e << ' ';
+         }
+         cerr << endl;
+         exit(0);
+      }
+      */
+      //--debug
+
       cost += day_cost;
       discon_cnt += day_discon;
    }
 
-   cost = (int)round(1.0 * cost / D);
+   cost = (ll)round(1.0 * cost / D);
 
    return {cost, discon_cnt};
 }
@@ -215,13 +232,35 @@ long long Graph::CalcEdgeSqDist(const Edge& edge_1, const Edge& edge_2) const {
    return edge_dist;
 }
 
-void Graph::SetShortestTree(Node start, Node node, Node p, const std::vector<long long>& min_dist) {
+int Graph::SetShortestTree(Node start, Node node, Node p, const std::vector<long long>& min_dist) {
+   int total_child_cnt = 0;
+
    for (auto [edge_index, n_node, w] : adj_list_[node]) {
       if (n_node == p) continue;
 
       if (min_dist[n_node] != min_dist[node] + w) continue;
       node_shortest_tree_[start].set(edge_index);
 
-      SetShortestTree(start, n_node, node, min_dist);
+      int child_cnt = SetShortestTree(start, n_node, node, min_dist);
+      total_child_cnt += child_cnt;
    }
+
+   total_child_cnt++;  // 自分を含める
+
+   if (p != -1) {
+      auto e = GetEdgeIndex(node, p);
+
+      // 自身と親の辺はtotal_child_cnt回通る
+      edge_betweenness_[e] += total_child_cnt;
+   }
+
+   return total_child_cnt;
+}
+const int Graph::GetEdgeIndex(Node u, Node v) const {
+   for (auto [edge_index, to, w] : adj_list_[u]) {
+      if (to == v) return edge_index;
+   }
+
+   assert(false);
+   return -1;
 }

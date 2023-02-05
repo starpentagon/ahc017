@@ -41,8 +41,7 @@ class BypassSetScheduler {
 
   protected:
    // 工事予定日を初期化する
-   void
-   Initialize();
+   void Initialize();
 
    // BypassSetのコストを算出する
    int CalcCost() const;
