@@ -5,9 +5,9 @@
 #include <random>
 #include <chrono>
 
+#include "ShortestTree.hpp"
 #include "FaceGroup.hpp"
 #include "BypassSet.hpp"
-
 using EdgePriority = std::pair<long long, int>;
 
 int CalcOverK(int K, const std::vector<int>& schedule);
@@ -35,6 +35,10 @@ class FaceGroupSchedulerExp {
       return bypass_set_;
    }
 
+   int GetIterCount() const {
+      return iter_count_;
+   }
+
   protected:
    // 工事予定日を初期化する
    void Initialize();
@@ -60,8 +64,9 @@ class FaceGroupSchedulerExp {
    std::pair<long long, long long> CalcCost(int d1, int d2);
 
    long long CalcEstimCost(int e, int from_d, int to_d);
-   long long CalcEstimCostByCenter(int e, int from_d, int to_d);
    long long CalcEstimCostByPoints(int e, int from_d, int to_d);
+
+   void MinDistCheck();
 
    bool OutputInfo() const;
 
@@ -89,4 +94,9 @@ class FaceGroupSchedulerExp {
 
    std::chrono::system_clock::time_point start_time_;
    BypassSet bypass_set_;
+
+   int iter_count_;
+
+   std::vector<Node> rep_point_list_;                      // 代表点
+   std::vector<std::vector<ShortestTree>> min_dist_tree_;  // 日別代表点別の最短路木
 };

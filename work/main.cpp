@@ -4,6 +4,7 @@
 #include "XorShift.hpp"
 #include "Graph.hpp"
 #include "ConnectionSet.hpp"
+#include "ShortestTree.hpp"
 #include "BypassSet.hpp"
 #include "BypassSetScheduler.hpp"
 #include "FaceGroup.hpp"
@@ -22,7 +23,7 @@ int main() {
    cin >> N >> M >> D >> K;
 
    int min_K = (M + D - 1) / D;
-   bool tight = (K - min_K) <= 7;
+   bool tight = (K - min_K) <= 3;
 
    FaceGroup face_group(N, D);
    ConnectionSet connector(N, D);
@@ -61,6 +62,7 @@ int main() {
       cerr << "DisconCnt=" << sche_discon_cnt << ' ';
       cerr << "OverK=" << CalcOverK(K, schedule) << ' ';
       cerr << "InBypass=-1" << ' ';
+      cerr << "Iter=-1" << ' ';
       cerr << endl;
 #endif
    } else {
@@ -79,6 +81,7 @@ int main() {
       cerr << "DisconCnt=" << sche_discon_cnt << ' ';
       cerr << "OverK=" << CalcOverK(K, schedule) << ' ';
       cerr << "InBypass=-1" << ' ';
+      cerr << "Iter=" << scheduler.GetIterCount() << ' ';
       cerr << endl;
 #endif
    }

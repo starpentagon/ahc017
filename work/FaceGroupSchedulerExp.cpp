@@ -6,6 +6,7 @@
 #include "FaceGroupSchedulerExp.hpp"
 #include "UnionFind.hpp"
 #include "XorShift.hpp"
+#include "ShortestTree.hpp"
 
 #include "debug.hpp"
 
@@ -19,8 +20,31 @@ template<class T> bool chmin(T &a, const T &b) {if(a>b) {a=b; return true;} retu
 // clang-format on
 
 FaceGroupSchedulerExp::FaceGroupSchedulerExp(int M, int D, int K, const Graph &graph, const vector<Faces> &face_group_list)
-    : graph_(graph), M_(M), D_(D), K_(K), face_group_list_(face_group_list), mt_(1234), max_temp_(kFaceGroupExpSA_DefaultMaxTemp), min_temp_(kFaceGroupExpSA_DefaultMinTemp), edge_day_(M, -1), day_construction_count_(D, 0), day_cost_(D, 0), bypass_set_(D, K, graph) {
+    : graph_(graph), M_(M), D_(D), K_(K), face_group_list_(face_group_list), mt_(1234), max_temp_(kFaceGroupExpSA_DefaultMaxTemp), min_temp_(kFaceGroupExpSA_DefaultMinTemp), edge_day_(M, -1), day_construction_count_(D, 0), day_cost_(D, 0), bypass_set_(D, K, graph), iter_count_(0) {
    start_time_ = chrono::system_clock::now();
+
+   auto n1 = graph_.GetCoordNode(0, 0);
+   auto n2 = graph_.GetCoordNode(500, 0);
+   auto n3 = graph_.GetCoordNode(1000, 0);
+   auto n4 = graph_.GetCoordNode(0, 500);
+   auto n5 = graph_.GetCoordNode(500, 500);
+   auto n6 = graph_.GetCoordNode(1000, 500);
+   auto n7 = graph_.GetCoordNode(0, 1000);
+   auto n8 = graph_.GetCoordNode(500, 1000);
+   auto n9 = graph_.GetCoordNode(1000, 1000);
+
+   rep_point_list_.emplace_back(n1);
+   rep_point_list_.emplace_back(n2);
+   rep_point_list_.emplace_back(n3);
+   rep_point_list_.emplace_back(n4);
+   rep_point_list_.emplace_back(n5);
+   rep_point_list_.emplace_back(n6);
+   rep_point_list_.emplace_back(n7);
+   rep_point_list_.emplace_back(n8);
+   rep_point_list_.emplace_back(n9);
+
+   int N = graph_.GetNodeSize();
+   min_dist_tree_.resize(D_, vector<ShortestTree>(9, ShortestTree(N)));
 }
 
 int FaceGroupSchedulerExp::ElapsedTime() {
@@ -30,8 +54,6 @@ int FaceGroupSchedulerExp::ElapsedTime() {
 }
 
 void FaceGroupSchedulerExp::Initialize() {
-   int E = graph_.GetEdgeList().size();
-
    // 初期集合を作る
    EdgeBit scheduled;
 
@@ -185,6 +207,29 @@ void FaceGroupSchedulerExp::Initialize() {
       }
    }
 
+   auto graph_edge_list = graph_.GetEdgeList();
+
+   rep(d, D_) {
+      rep(i, 9) {
+         for (auto [u, v, w] : graph_edge_list) {
+            min_dist_tree_[d][i].AddEdge(u, v, w);
+         }
+
+         auto p = rep_point_list_[i];
+         min_dist_tree_[d][i].Init(p);
+      }
+   }
+
+   int E = graph_edge_list.size();
+
+   rep(e, E) {
+      int d = edge_day_[e];
+
+      rep(i, 9) {
+         min_dist_tree_[d][i].DelEdge(e);
+      }
+   }
+
    // cerr << "Init" << endl;
    //  debug(day_construction_count_);
    //   OutputInfo();
@@ -227,115 +272,64 @@ long long FaceGroupSchedulerExp::CalcEstimCost(int target_e, int from_d, int to_
    return before_cost - after_cost;
 }
 
-long long FaceGroupSchedulerExp::CalcEstimCostByCenter(int target_e, int from_d, int to_d) {
-   static Node center_node = -1;
-
-   if (center_node == -1) {
-      center_node = graph_.GetCenterNode();
-   }
-
+void FaceGroupSchedulerExp::MinDistCheck() {
    int E = graph_.GetEdgeList().size();
 
-   // from_d, to_dの変更前のコスト
-   long long before_cost = 0;
-
-   {
-      vector<int> from_edge_list, to_edge_list;
+   rep(d, D_) {
+      vector<int> del_edge_list;
       rep(e, E) {
-         if (edge_day_[e] == from_d) from_edge_list.emplace_back(e);
-         if (edge_day_[e] == to_d) to_edge_list.emplace_back(e);
-      }
-
-      before_cost += graph_.CalcCostNode(center_node, from_edge_list).first;
-      before_cost += graph_.CalcCostNode(center_node, to_edge_list).first;
-   }
-
-   long long after_cost = 0;
-
-   {
-      vector<int> from_edge_list, to_edge_list;
-      rep(e, E) {
-         if (e == target_e) {
-            to_edge_list.emplace_back(e);
-         } else {
-            if (edge_day_[e] == from_d) from_edge_list.emplace_back(e);
-            if (edge_day_[e] == to_d) to_edge_list.emplace_back(e);
+         if (edge_day_[e] == d) {
+            del_edge_list.emplace_back(e);
          }
       }
 
-      after_cost += graph_.CalcCostNode(center_node, from_edge_list).first;
-      after_cost += graph_.CalcCostNode(center_node, to_edge_list).first;
-   }
+      rep(i, 9) {
+         auto p = rep_point_list_[i];
+         auto dist1 = graph_.CalcCostNode(p, del_edge_list).first;
+         auto dist2 = min_dist_tree_[d][i].CalcTotalDist();
 
-   return before_cost - after_cost;
+         if (abs(dist1 - dist2) >= 2) {
+            // debug(d, i, dist1, dist2);
+         }
+      }
+   }
 }
 
 long long FaceGroupSchedulerExp::CalcEstimCostByPoints(int target_e, int from_d, int to_d) {
-   static vector<int> points;
-
-   if (points.empty()) {
-      auto n1 = graph_.GetCoordNode(0, 0);
-      auto n2 = graph_.GetCoordNode(500, 0);
-      auto n3 = graph_.GetCoordNode(1000, 0);
-      auto n4 = graph_.GetCoordNode(0, 500);
-      // auto n5 = graph_.GetCoordNode(500, 500);
-      auto n6 = graph_.GetCoordNode(1000, 500);
-      auto n7 = graph_.GetCoordNode(0, 1000);
-      auto n8 = graph_.GetCoordNode(500, 1000);
-      auto n9 = graph_.GetCoordNode(1000, 1000);
-
-      points.emplace_back(n1);
-      points.emplace_back(n2);
-      points.emplace_back(n3);
-      points.emplace_back(n4);
-      // points.emplace_back(n5);
-      points.emplace_back(n6);
-      points.emplace_back(n7);
-      points.emplace_back(n8);
-      points.emplace_back(n9);
-   }
-
-   int E = graph_.GetEdgeList().size();
-
    // from_d, to_dの変更前のコスト
    long long before_cost = 0;
-   static const double coef = 1;
 
    {
-      vector<int> from_edge_list, to_edge_list;
-      rep(e, E) {
-         if (edge_day_[e] == from_d) from_edge_list.emplace_back(e);
-         if (edge_day_[e] == to_d) to_edge_list.emplace_back(e);
-      }
+      rep(i, 9) {
+         auto cost_from = min_dist_tree_[from_d][i].CalcTotalDist();
+         auto cost_to = min_dist_tree_[to_d][i].CalcTotalDist();
 
-      // before_cost += graph_.CalcCost(target_e, from_edge_list).first;
-      // before_cost += graph_.CalcCost(target_e, to_edge_list).first;
-
-      for (auto p : points) {
-         before_cost += coef * graph_.CalcCostNode(p, from_edge_list).first;
-         before_cost += coef * graph_.CalcCostNode(p, to_edge_list).first;
+         before_cost += cost_from;
+         before_cost += cost_to;
       }
    }
 
    long long after_cost = 0;
 
    {
-      vector<int> from_edge_list, to_edge_list;
-      rep(e, E) {
-         if (e == target_e) {
-            to_edge_list.emplace_back(e);
-         } else {
-            if (edge_day_[e] == from_d) from_edge_list.emplace_back(e);
-            if (edge_day_[e] == to_d) to_edge_list.emplace_back(e);
-         }
+      rep(i, 9) {
+         min_dist_tree_[from_d][i].AddEdge(target_e);
+         min_dist_tree_[to_d][i].DelEdge(target_e);
       }
 
-      // after_cost += graph_.CalcCost(target_e, from_edge_list).first;
-      // after_cost += graph_.CalcCost(target_e, to_edge_list).first;
+      rep(i, 9) {
+         auto cost_from = min_dist_tree_[from_d][i].CalcTotalDist();
+         auto cost_to = min_dist_tree_[to_d][i].CalcTotalDist();
 
-      for (auto p : points) {
-         after_cost += coef * graph_.CalcCostNode(p, from_edge_list).first;
-         after_cost += coef * graph_.CalcCostNode(p, to_edge_list).first;
+         after_cost += cost_from;
+         after_cost += cost_to;
+      }
+   }
+
+   if (before_cost <= after_cost) {
+      rep(i, 9) {
+         min_dist_tree_[from_d][i].DelEdge(target_e);
+         min_dist_tree_[to_d][i].AddEdge(target_e);
       }
    }
 
@@ -389,7 +383,7 @@ void FaceGroupSchedulerExp::AdjustMaxConst(int from_d, int to_d, bool randomize_
 
       uf.Unite(u, v);
 
-      if (uf.size(1) == N) {
+      if ((int)uf.size(1) == N) {
          for (int j = i + 1; j < (int)edge_list.size(); j++) {
             can_del_edge.insert(edge_list[j].second);
          }
@@ -663,8 +657,8 @@ vector<int> FaceGroupSchedulerExp::MakeSchedule(int sche_face_group) {
    int E = graph_.GetEdgeList().size();
    sche_face_group_ = min(sche_face_group, (int)face_group_list_.size());
    uniform_real_distribution<> uniform_dist(0.0, 1.0);
-   static constexpr int kMaxCount = 10 * 1000;
-   static constexpr int kMaxTime = 2000 * 1000 - 300;
+   static constexpr int kMaxCount = 1000 * 1000;
+   static constexpr int kMaxTime = 6 * 1000 - 300;
 
    // InitializeRandom();
    Initialize();
@@ -679,7 +673,16 @@ vector<int> FaceGroupSchedulerExp::MakeSchedule(int sche_face_group) {
       edge_day_[e] = to_d;
       day_construction_count_[from_d]--;
       day_construction_count_[to_d]++;
+
+      /*
+      rep(i, 9) {
+         min_dist_tree_[from_d][i].AddEdge(e);
+         min_dist_tree_[to_d][i].DelEdge(e);
+      }
+      */
    };
+
+   iter_count_ = kMaxCount;
 
    rep(i, kMaxCount) {
       if (best_cost == 0) {
@@ -687,12 +690,9 @@ vector<int> FaceGroupSchedulerExp::MakeSchedule(int sche_face_group) {
       }
 
       if (ElapsedTime() > kMaxTime) {
-         // cerr << ElapsedTime() << endl;
+         iter_count_ = i;
          break;
       }
-
-      const double progress = min(1.0 * i / kMaxCount, 1.0);
-      const double temp = max_temp_ + (min_temp_ - max_temp_) * progress;
 
       // 遷移
       auto [trans_e, from_d, to_d] = GenerateTransition(i);
@@ -706,22 +706,13 @@ vector<int> FaceGroupSchedulerExp::MakeSchedule(int sche_face_group) {
          break;
       }
 
-      auto estim_delta = CalcEstimCost(trans_e, from_d, to_d);
-      //     auto estim_delta = CalcEstimCostByCenter(trans_e, from_d, to_d);
-      // auto estim_delta = CalcEstimCostByPoints(trans_e, from_d, to_d);
+      // auto estim_delta = CalcEstimCost(trans_e, from_d, to_d);
+      auto estim_delta = CalcEstimCostByPoints(trans_e, from_d, to_d);
       bool search_update = false;
 
-      if (estim_delta >= 0) {
+      if (estim_delta > 0) {
          // 更新できる場合は必ず遷移する
          search_update = true;
-      } else {
-         // 悪化している場合も一定確率で更新する
-         double prob = exp(estim_delta / temp);
-         double rnd = uniform_dist(mt_);
-
-         if (prob > rnd) {
-            search_update = true;
-         }
       }
 
       if (!search_update) {
@@ -730,6 +721,7 @@ vector<int> FaceGroupSchedulerExp::MakeSchedule(int sche_face_group) {
       }
 
       MakeTrans(trans_e, from_d, to_d);
+      // debug(i, estim_delta);
 
       // debug(trans_e, from_d, to_d);
       // auto [trans_cost, trans_bet] = CalcCost(from_d, to_d);
@@ -738,7 +730,6 @@ vector<int> FaceGroupSchedulerExp::MakeSchedule(int sche_face_group) {
       // auto delta_improve_bet = cur_bet - trans_bet;
 
       // debug(i, delta_improve, estim_delta);
-      // debug(i, estim_delta);
 
       // debug(i, best_cost, cur_cost, cur_bet, delta_improve, delta_improve_bet);
 
@@ -749,7 +740,7 @@ vector<int> FaceGroupSchedulerExp::MakeSchedule(int sche_face_group) {
       if (chmin(best_cost, cur_cost)) {
          best_edge_day = edge_day_;
          best_bypass_set = bypass_set_;
-         debug(i, best_cost, cur_cost);
+         // debug(i, best_cost, cur_cost);
       }
    }
 

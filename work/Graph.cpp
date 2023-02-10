@@ -198,11 +198,6 @@ std::pair<long long, int> Graph::CalcCostNode(int node, const std::vector<int>& 
       node_dist += min_dist[t];
 
       if (min_dist[t] == DIST_INF) {
-         // debug
-         /*
-         cerr << "Node:" << s << ' ' << t << endl;
-         */
-         //--debug
          disconnected_count++;
       }
    }
