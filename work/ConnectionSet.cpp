@@ -139,7 +139,7 @@ vector<EdgeBit> ConnectionSet::CalcAvailEdgeSet() {
    static constexpr int kMaxCount = 1000;
 
    // 初期化
-   Prep();
+   Prep(true);
    InitDayConnectionSet();
 
    int cur_cost = CalcCost(day_connection_set_);

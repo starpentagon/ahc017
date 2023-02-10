@@ -3,6 +3,7 @@
 #include <vector>
 #include <queue>
 #include <random>
+#include <chrono>
 
 #include "FaceGroup.hpp"
 #include "BypassSet.hpp"
@@ -12,19 +13,19 @@ using EdgePriority = std::pair<long long, int>;
 int CalcOverK(int K, const std::vector<int>& schedule);
 
 // コスト関数
-static constexpr long kFaceGroupSA_OverK = 1000;              // 工事辺数の超過
-static constexpr long kFaceGroupSA_SameUnselectedEdge = 500;  // 同一の面集合内の未決定の辺が同日に工事
-static constexpr long kFaceGroupSA_SameSalectedEdge = 200;    // 同一の面集合内の決定済の辺が同日に工事
+static constexpr long kFaceGroupExpSA_OverK = 1000;              // 工事辺数の超過
+static constexpr long kFaceGroupExpSA_SameUnselectedEdge = 500;  // 同一の面集合内の未決定の辺が同日に工事
+static constexpr long kFaceGroupExpSA_SameSalectedEdge = 200;    // 同一の面集合内の決定済の辺が同日に工事
 
 // 焼きなまし法のパラメタ
-static constexpr int kFaceGroupSA_DefaultMaxTemp = 5011;
-static constexpr int kFaceGroupSA_DefaultMinTemp = 298;
+static constexpr int kFaceGroupExpSA_DefaultMaxTemp = 0;
+static constexpr int kFaceGroupExpSA_DefaultMinTemp = 0;
 
 using FaceGroupSA_Trans = std::tuple<int, int, int>;  // 遷移情報(遷移を辺, 元の工事日, 遷移先の工事日)
 
 class FaceGroupSchedulerExp {
   public:
-   FaceGroupSchedulerExp(int M, int D, int K, const Graph& graph, const std::vector<EdgeBit>& day_avail_edge_bit, const std::vector<Faces>& face_group_list);
+   FaceGroupSchedulerExp(int M, int D, int K, const Graph& graph, const std::vector<Faces>& face_group_list);
 
    // 辺ごとの工事日を決める
    std::vector<int> MakeSchedule(int sche_face_group);
@@ -49,13 +50,18 @@ class FaceGroupSchedulerExp {
    // 辺の優先度の総和が最大になる日と工事する辺を求める
    std::pair<int, EdgeBit> CalcMaxPriorityDay(const EdgeBit& scheduled, std::vector<std::priority_queue<EdgePriority>>& que_list) const;
 
-   FaceGroupSA_Trans GenerateTransition();
+   FaceGroupSA_Trans GenerateTransition(int iter);
 
    void SetSchedule(int e, int d, EdgeBit& scheduled);
 
+   int ElapsedTime();
    // スケジュールのコストを計算する
-   long long CalcCost(bool log = false);
-   long long CalcCost(int d1, int d2);
+   std::pair<long long, long long> CalcCost(bool log = false);
+   std::pair<long long, long long> CalcCost(int d1, int d2);
+
+   long long CalcEstimCost(int e, int from_d, int to_d);
+   long long CalcEstimCostByCenter(int e, int from_d, int to_d);
+   long long CalcEstimCostByPoints(int e, int from_d, int to_d);
 
    bool OutputInfo() const;
 
@@ -79,10 +85,8 @@ class FaceGroupSchedulerExp {
    std::vector<int> edge_day_;                // edge_day_[e]: eの工事日
    std::vector<int> day_construction_count_;  //  day_construction_count_[d]: d日目の工事件数
 
-   std::vector<EdgeBit> day_avail_edge_bit_;  // 日別の工事可能な辺集合
-   EdgeBit avail_one_edge_;                   // 工事可能日が1日のみの辺
-
    std::vector<long long> day_cost_;  // 日別のコスト
 
+   std::chrono::system_clock::time_point start_time_;
    BypassSet bypass_set_;
 };

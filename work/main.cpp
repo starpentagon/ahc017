@@ -21,18 +21,20 @@ int main() {
    int N, M, D, K;
    cin >> N >> M >> D >> K;
 
+   int min_K = (M + D - 1) / D;
+   bool tight = (K - min_K) <= 7;
+
    FaceGroup face_group(N, D);
    ConnectionSet connector(N, D);
-   // SqDistScheduler scheduler(N, D, K);
    vector<Edge> edge_list;
 
    rep(i, M) {
       int u, v, w;
       cin >> u >> v >> w;
 
-      connector.AddEdge(u, v, w);
       face_group.AddEdge(u, v, w);
       edge_list.emplace_back(u, v, w);
+      connector.AddEdge(u, v, w);
    }
 
    vector<Coord> coord_list;
@@ -45,26 +47,41 @@ int main() {
       face_group.SetNodeCoord(i + 1, x, y);
    }
 
-   auto day_avail_edge_bit = connector.CalcAvailEdgeSet();
+   vector<int> schedule;
 
-   auto face_group_list = face_group.MakeGroup();
+   if (tight) {
+      auto day_avail_edge_bit = connector.CalcAvailEdgeSet();
+      BypassSetScheduler scheduler(D, K, connector, day_avail_edge_bit);
 
-   // FaceGroupScheduler scheduler(M, D, K, connector, day_avail_edge_bit, face_group_list);
-   FaceGroupSchedulerExp scheduler(M, D, K, connector, day_avail_edge_bit, face_group_list);
-   auto schedule = scheduler.MakeSchedule(10000);
+      schedule = scheduler.MakeSchedule();
+      cout << schedule << endl;
+#ifdef LOCAL
+      auto [sche_cost, sche_discon_cnt] = connector.CalcScheduleCost(D, schedule);
+      cerr << "Cost=" << sche_cost << ' ';
+      cerr << "DisconCnt=" << sche_discon_cnt << ' ';
+      cerr << "OverK=" << CalcOverK(K, schedule) << ' ';
+      cerr << "InBypass=-1" << ' ';
+      cerr << endl;
+#endif
+   } else {
+      auto face_group_list = face_group.MakeGroup();
 
-   //   auto day_avail_edge_bit = connector.CalcAvailEdgeSet();
-   //   BypassSetScheduler scheduler(D, K, connector, day_avail_edge_bit);
-
-   cout << schedule << endl;
+      // FaceGroupScheduler scheduler(M, D, K, connector, day_avail_edge_bit, face_group_list);
+      FaceGroupSchedulerExp scheduler(M, D, K, face_group, face_group_list);
+      schedule = scheduler.MakeSchedule(10000);
+      cout << schedule << endl;
 
 #ifdef LOCAL
-   auto [sche_cost, sche_discon_cnt] = face_group.CalcScheduleCost(D, schedule);
-   cerr << "Cost=" << sche_cost << ' ';
-   cerr << "DisconCnt=" << sche_discon_cnt << ' ';
-   cerr << "OverK=" << CalcOverK(K, schedule) << ' ';
-   cerr << "InBypass=" << scheduler.GetBypassSet().InBypassEdgeCount() << ' ';
-   cerr << endl;
+      auto [sche_cost, sche_discon_cnt] = face_group.CalcScheduleCost(D, schedule);
+      // int sche_cost = 0, sche_discon_cnt = 0;
+      cerr
+          << "Cost=" << sche_cost << ' ';
+      cerr << "DisconCnt=" << sche_discon_cnt << ' ';
+      cerr << "OverK=" << CalcOverK(K, schedule) << ' ';
+      cerr << "InBypass=-1" << ' ';
+      cerr << endl;
 #endif
+   }
+
    return 0;
 }

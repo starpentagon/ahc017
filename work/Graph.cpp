@@ -97,7 +97,7 @@ EdgeBit FindShortestPath(const int start, const int end, const vector<vector<Adj
    return path_bit;
 }
 
-void Graph::Prep() {
+void Graph::Prep(bool calc_bypass) {
    EdgeBit del_edge_flg;
    edge_bypass_.resize(edge_list_.size());
    edge_betweenness_.resize(edge_list_.size(), 0);
@@ -117,16 +117,99 @@ void Graph::Prep() {
    }
 
    // 辺eを削除した場合の迂回路を求める
-   rep(e, edge_list_.size()) {
-      auto [u, v, w] = edge_list_[e];
+   if (calc_bypass) {
+      rep(e, edge_list_.size()) {
+         auto [u, v, w] = edge_list_[e];
 
-      del_edge_flg[e] = 1;
+         del_edge_flg[e] = 1;
 
-      auto min_dist = ShortestPathBFS(adj_list_, u, del_edge_flg, v);
-      edge_bypass_[e] = FindShortestPath(u, v, adj_list_, min_dist, del_edge_flg);
+         auto min_dist = ShortestPathBFS(adj_list_, u, del_edge_flg, v);
+         edge_bypass_[e] = FindShortestPath(u, v, adj_list_, min_dist, del_edge_flg);
 
-      del_edge_flg[e] = 0;
+         del_edge_flg[e] = 0;
+      }
    }
+}
+
+std::pair<long long, int> Graph::CalcCost(int target_e, const std::vector<int>& del_edge_index_list) const {
+   EdgeBit del_edge_flg;
+
+   for (auto e : del_edge_index_list) {
+      del_edge_flg.set(e);
+   }
+
+   int disconnected_count = 0;
+
+   ll cost = 0;
+
+   auto [u, v, w] = edge_list_[target_e];
+
+   for (Node s = 1; s <= N_; s++) {
+      if (s != u && s != v) continue;
+
+      EdgeBit shortest_change_bit = del_edge_flg & node_shortest_tree_[s];
+
+      if (shortest_change_bit.none()) continue;
+
+      auto min_dist = ShortestPathBFS(adj_list_, s, del_edge_flg);
+
+      ll node_dist = 0;
+
+      for (Node t = 1; t <= N_; t++) {
+         node_dist += min_dist[t];
+
+         if (min_dist[t] == DIST_INF) {
+            // debug
+            /*
+            cerr << "Node:" << s << ' ' << t << endl;
+            */
+            //--debug
+            disconnected_count++;
+         }
+      }
+
+      cost += node_dist - node_sum_dist_[s];
+   }
+
+   return {1000LL * cost / (N_ * (N_ - 1)), disconnected_count};
+}
+
+std::pair<long long, int> Graph::CalcCostNode(int node, const std::vector<int>& del_edge_index_list) const {
+   EdgeBit del_edge_flg;
+
+   for (auto e : del_edge_index_list) {
+      del_edge_flg.set(e);
+   }
+
+   int disconnected_count = 0;
+
+   ll cost = 0;
+
+   EdgeBit shortest_change_bit = del_edge_flg & node_shortest_tree_[node];
+
+   if (shortest_change_bit.none())
+      return {0, 0};
+
+   auto min_dist = ShortestPathBFS(adj_list_, node, del_edge_flg);
+
+   ll node_dist = 0;
+
+   for (Node t = 1; t <= N_; t++) {
+      node_dist += min_dist[t];
+
+      if (min_dist[t] == DIST_INF) {
+         // debug
+         /*
+         cerr << "Node:" << s << ' ' << t << endl;
+         */
+         //--debug
+         disconnected_count++;
+      }
+   }
+
+   cost += node_dist - node_sum_dist_[node];
+
+   return {1000LL * cost / (N_ * (N_ - 1)), disconnected_count};
 }
 
 pair<ll, int> Graph::CalcCost(const std::vector<int>& del_edge_list) const {
@@ -263,4 +346,36 @@ const int Graph::GetEdgeIndex(Node u, Node v) const {
 
    assert(false);
    return -1;
+}
+
+Node Graph::GetCenterNode() const {
+   long long min_dist = numeric_limits<long long>::max();
+   Node min_node = -1;
+
+   for (int n = 1; n <= N_; n++) {
+      auto [x, y] = GetNodeCoord(n);
+      long long dist = (x - 500) * (x - 500) + (y - 500) * (y - 500);
+
+      if (chmin(min_dist, dist)) {
+         min_node = n;
+      }
+   }
+
+   return min_node;
+}
+
+Node Graph::GetCoordNode(int tx, int ty) const {
+   long long min_dist = numeric_limits<long long>::max();
+   Node min_node = -1;
+
+   for (int n = 1; n <= N_; n++) {
+      auto [x, y] = GetNodeCoord(n);
+      long long dist = (x - tx) * (x - tx) + (y - ty) * (y - ty);
+
+      if (chmin(min_dist, dist)) {
+         min_node = n;
+      }
+   }
+
+   return min_node;
 }

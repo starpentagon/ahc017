@@ -30,6 +30,9 @@ class Graph {
       return node_coord_;
    }
 
+   Node GetCenterNode() const;
+   Node GetCoordNode(int x, int y) const;
+
    // ノードの座標を設定する
    void SetNodeCoord(Node u, int x, int y);
 
@@ -37,10 +40,12 @@ class Graph {
    // - 2ノード間距離の総和を求める
    // - 最短路木を求める
    // - Edge betweennessを求める
-   void Prep();
+   void Prep(bool calc_bypass);
 
    // 辺を削除した時の不満度と非連結なノードペア数を求める
    std::pair<long long, int> CalcCost(const std::vector<int>& del_edge_index_list) const;
+   std::pair<long long, int> CalcCost(int target_e, const std::vector<int>& del_edge_index_list) const;
+   std::pair<long long, int> CalcCostNode(int node, const std::vector<int>& del_edge_index_list) const;
    std::pair<long long, int> CalcScheduleCost(int D, const std::vector<int>& schedule) const;
 
    // ノード間の平方距離

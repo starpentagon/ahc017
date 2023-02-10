@@ -18,28 +18,19 @@ template<class T> bool chmax(T &a, const T &b) {if(a<b) {a=b; return true;} retu
 template<class T> bool chmin(T &a, const T &b) {if(a>b) {a=b; return true;} return false; }
 // clang-format on
 
-FaceGroupSchedulerExp::FaceGroupSchedulerExp(int M, int D, int K, const Graph &graph, const vector<EdgeBit> &day_avail_edge_bit, const vector<Faces> &face_group_list)
-    : graph_(graph), M_(M), D_(D), K_(K), face_group_list_(face_group_list), mt_(1234), max_temp_(kFaceGroupSA_DefaultMaxTemp), min_temp_(kFaceGroupSA_DefaultMinTemp), edge_day_(M, -1), day_construction_count_(D, 0), day_avail_edge_bit_(day_avail_edge_bit), day_cost_(D, 0), bypass_set_(D, K, graph) {
-   // すべての遷移を可能にする
-   rep(d, D) {
-      day_avail_edge_bit_[d].reset();
-      day_avail_edge_bit_[d].flip();
-   }
+FaceGroupSchedulerExp::FaceGroupSchedulerExp(int M, int D, int K, const Graph &graph, const vector<Faces> &face_group_list)
+    : graph_(graph), M_(M), D_(D), K_(K), face_group_list_(face_group_list), mt_(1234), max_temp_(kFaceGroupExpSA_DefaultMaxTemp), min_temp_(kFaceGroupExpSA_DefaultMinTemp), edge_day_(M, -1), day_construction_count_(D, 0), day_cost_(D, 0), bypass_set_(D, K, graph) {
+   start_time_ = chrono::system_clock::now();
+}
+
+int FaceGroupSchedulerExp::ElapsedTime() {
+   auto e_time = chrono::system_clock::now() - start_time_;
+   int e_time_ms = chrono::duration_cast<chrono::milliseconds>(e_time).count();
+   return e_time_ms;
 }
 
 void FaceGroupSchedulerExp::Initialize() {
    int E = graph_.GetEdgeList().size();
-   vector<int> avail_cnt(E, 0);
-
-   rep(d, D_) {
-      rep(e, E) {
-         if (day_avail_edge_bit_[d][e]) avail_cnt[e]++;
-      }
-   }
-
-   rep(e, E) {
-      if (avail_cnt[e] == 1) avail_one_edge_[e] = 1;
-   }
 
    // 初期集合を作る
    EdgeBit scheduled;
@@ -47,7 +38,7 @@ void FaceGroupSchedulerExp::Initialize() {
    auto edge_avail_day = [&](int e) {
       vector<int> day_list;
       rep(d, D_) {
-         if (day_avail_edge_bit_[d][e]) day_list.emplace_back(d);
+         day_list.emplace_back(d);
       }
       return day_list;
    };
@@ -59,7 +50,6 @@ void FaceGroupSchedulerExp::Initialize() {
       rep(f, L) {
          for (auto [b, e] : face_edge_list[f]) {
             if (scheduled[e]) continue;
-            if (!day_avail_edge_bit_[d][e]) continue;
 
             que.emplace(b, e);
 
@@ -113,7 +103,7 @@ void FaceGroupSchedulerExp::Initialize() {
          if (scheduled[e]) continue;
 
          auto day_list = edge_avail_day(e);
-         shuffle(day_list.begin(), day_list.end(), mt_);
+         // shuffle(day_list.begin(), day_list.end(), mt_);
 
          long long best_bet = -1, best_d = -1;
          vector<int> best_edge_list;
@@ -138,7 +128,7 @@ void FaceGroupSchedulerExp::Initialize() {
    }
 
    // 工事辺数の上限overの解消
-   OutputInfo();
+   // OutputInfo();
 
    rep(from_d, D_) {
       if (day_construction_count_[from_d] <= K_) continue;
@@ -147,30 +137,209 @@ void FaceGroupSchedulerExp::Initialize() {
          if (to_d == from_d) continue;
          if (day_construction_count_[to_d] >= K_) continue;
 
-         // debug(from_d, to_d, day_construction_count_[from_d], day_construction_count_[to_d]);
-         int prev = day_construction_count_[from_d];
-
          AdjustMaxConst(from_d, to_d);
-
-         int cur = day_construction_count_[from_d];
-
-         if (prev == cur) {
-            while (day_construction_count_[from_d] > K_) {
-               // cerr << "force" << endl;
-               AdjustMaxConst(from_d, to_d, true, false);
-               // debug(from_d, to_d, day_construction_count_[from_d], day_construction_count_[to_d]);
-            }
-         }
-
-         // debug(from_d, to_d, day_construction_count_[from_d], day_construction_count_[to_d]);
 
          if (day_construction_count_[from_d] <= K_) break;
       }
    }
 
-   cerr << "Init" << endl;
-   debug(day_construction_count_);
-   OutputInfo();
+   rep(from_d, D_) {
+      if (day_construction_count_[from_d] <= K_) continue;
+
+      rep(to_d, D_) {
+         if (to_d == from_d) continue;
+         if (day_construction_count_[to_d] >= K_) continue;
+
+         int cnt = 0;
+         while (day_construction_count_[from_d] > K_) {
+            cnt++;
+            // cerr << "random" << endl;
+            AdjustMaxConst(from_d, to_d, true);
+            // debug(from_d, to_d, day_construction_count_[from_d], day_construction_count_[to_d]);
+
+            if (cnt > 3) break;
+         }
+
+         if (day_construction_count_[from_d] <= K_) break;
+      }
+   }
+
+   rep(from_d, D_) {
+      if (day_construction_count_[from_d] <= K_) continue;
+
+      rep(to_d, D_) {
+         if (to_d == from_d) continue;
+         if (day_construction_count_[to_d] >= K_) continue;
+
+         int cnt = 0;
+         while (day_construction_count_[from_d] > K_) {
+            cnt++;
+            // cerr << "force" << endl;
+            AdjustMaxConst(from_d, to_d, true, true);
+            // debug(from_d, to_d, day_construction_count_[from_d], day_construction_count_[to_d]);
+
+            if (cnt > 100) break;
+         }
+
+         if (day_construction_count_[from_d] <= K_) break;
+      }
+   }
+
+   // cerr << "Init" << endl;
+   //  debug(day_construction_count_);
+   //   OutputInfo();
+}
+
+long long FaceGroupSchedulerExp::CalcEstimCost(int target_e, int from_d, int to_d) {
+   int E = graph_.GetEdgeList().size();
+
+   // from_d, to_dの変更前のコスト
+   long long before_cost = 0;
+
+   {
+      vector<int> from_edge_list, to_edge_list;
+      rep(e, E) {
+         if (edge_day_[e] == from_d) from_edge_list.emplace_back(e);
+         if (edge_day_[e] == to_d) to_edge_list.emplace_back(e);
+      }
+
+      before_cost += graph_.CalcCost(target_e, from_edge_list).first;
+      before_cost += graph_.CalcCost(target_e, to_edge_list).first;
+   }
+
+   long long after_cost = 0;
+
+   {
+      vector<int> from_edge_list, to_edge_list;
+      rep(e, E) {
+         if (e == target_e) {
+            to_edge_list.emplace_back(e);
+         } else {
+            if (edge_day_[e] == from_d) from_edge_list.emplace_back(e);
+            if (edge_day_[e] == to_d) to_edge_list.emplace_back(e);
+         }
+      }
+
+      after_cost += graph_.CalcCost(target_e, from_edge_list).first;
+      after_cost += graph_.CalcCost(target_e, to_edge_list).first;
+   }
+
+   return before_cost - after_cost;
+}
+
+long long FaceGroupSchedulerExp::CalcEstimCostByCenter(int target_e, int from_d, int to_d) {
+   static Node center_node = -1;
+
+   if (center_node == -1) {
+      center_node = graph_.GetCenterNode();
+   }
+
+   int E = graph_.GetEdgeList().size();
+
+   // from_d, to_dの変更前のコスト
+   long long before_cost = 0;
+
+   {
+      vector<int> from_edge_list, to_edge_list;
+      rep(e, E) {
+         if (edge_day_[e] == from_d) from_edge_list.emplace_back(e);
+         if (edge_day_[e] == to_d) to_edge_list.emplace_back(e);
+      }
+
+      before_cost += graph_.CalcCostNode(center_node, from_edge_list).first;
+      before_cost += graph_.CalcCostNode(center_node, to_edge_list).first;
+   }
+
+   long long after_cost = 0;
+
+   {
+      vector<int> from_edge_list, to_edge_list;
+      rep(e, E) {
+         if (e == target_e) {
+            to_edge_list.emplace_back(e);
+         } else {
+            if (edge_day_[e] == from_d) from_edge_list.emplace_back(e);
+            if (edge_day_[e] == to_d) to_edge_list.emplace_back(e);
+         }
+      }
+
+      after_cost += graph_.CalcCostNode(center_node, from_edge_list).first;
+      after_cost += graph_.CalcCostNode(center_node, to_edge_list).first;
+   }
+
+   return before_cost - after_cost;
+}
+
+long long FaceGroupSchedulerExp::CalcEstimCostByPoints(int target_e, int from_d, int to_d) {
+   static vector<int> points;
+
+   if (points.empty()) {
+      auto n1 = graph_.GetCoordNode(0, 0);
+      auto n2 = graph_.GetCoordNode(500, 0);
+      auto n3 = graph_.GetCoordNode(1000, 0);
+      auto n4 = graph_.GetCoordNode(0, 500);
+      // auto n5 = graph_.GetCoordNode(500, 500);
+      auto n6 = graph_.GetCoordNode(1000, 500);
+      auto n7 = graph_.GetCoordNode(0, 1000);
+      auto n8 = graph_.GetCoordNode(500, 1000);
+      auto n9 = graph_.GetCoordNode(1000, 1000);
+
+      points.emplace_back(n1);
+      points.emplace_back(n2);
+      points.emplace_back(n3);
+      points.emplace_back(n4);
+      // points.emplace_back(n5);
+      points.emplace_back(n6);
+      points.emplace_back(n7);
+      points.emplace_back(n8);
+      points.emplace_back(n9);
+   }
+
+   int E = graph_.GetEdgeList().size();
+
+   // from_d, to_dの変更前のコスト
+   long long before_cost = 0;
+   static const double coef = 1;
+
+   {
+      vector<int> from_edge_list, to_edge_list;
+      rep(e, E) {
+         if (edge_day_[e] == from_d) from_edge_list.emplace_back(e);
+         if (edge_day_[e] == to_d) to_edge_list.emplace_back(e);
+      }
+
+      // before_cost += graph_.CalcCost(target_e, from_edge_list).first;
+      // before_cost += graph_.CalcCost(target_e, to_edge_list).first;
+
+      for (auto p : points) {
+         before_cost += coef * graph_.CalcCostNode(p, from_edge_list).first;
+         before_cost += coef * graph_.CalcCostNode(p, to_edge_list).first;
+      }
+   }
+
+   long long after_cost = 0;
+
+   {
+      vector<int> from_edge_list, to_edge_list;
+      rep(e, E) {
+         if (e == target_e) {
+            to_edge_list.emplace_back(e);
+         } else {
+            if (edge_day_[e] == from_d) from_edge_list.emplace_back(e);
+            if (edge_day_[e] == to_d) to_edge_list.emplace_back(e);
+         }
+      }
+
+      // after_cost += graph_.CalcCost(target_e, from_edge_list).first;
+      // after_cost += graph_.CalcCost(target_e, to_edge_list).first;
+
+      for (auto p : points) {
+         after_cost += coef * graph_.CalcCostNode(p, from_edge_list).first;
+         after_cost += coef * graph_.CalcCostNode(p, to_edge_list).first;
+      }
+   }
+
+   return before_cost - after_cost;
 }
 
 void FaceGroupSchedulerExp::AdjustMaxConst(int from_d, int to_d, bool randomize_tree, bool force_e) {
@@ -237,7 +406,7 @@ void FaceGroupSchedulerExp::AdjustMaxConst(int from_d, int to_d, bool randomize_
    }
 }
 
-long long FaceGroupSchedulerExp::CalcCost(bool log) {
+pair<long long, long long> FaceGroupSchedulerExp::CalcCost(bool log) {
    int E = graph_.GetEdgeList().size();
 
    rep(d, D_) {
@@ -255,10 +424,33 @@ long long FaceGroupSchedulerExp::CalcCost(bool log) {
    }
    cost = (long long)round(1.0 * cost / D_);
 
-   return cost;
+   // 面集合のmax betweennessに関するコスト
+   long long bet_cost = 0;
+
+   for (auto faces : face_group_list_) {
+      int L = faces.size();
+      vector<vector<long long>> day_betweenness(D_);
+
+      rep(f, L) {
+         for (auto [b, e] : faces[f].GetEdgeList()) {
+            int d = edge_day_[e];
+            day_betweenness[d].emplace_back(b);
+         }
+      }
+
+      rep(d, D_) {
+         if (day_betweenness[d].empty()) continue;
+
+         auto max_day_bet = *max_element(day_betweenness[d].begin(), day_betweenness[d].end());
+
+         bet_cost += max_day_bet / 100;
+      }
+   }
+
+   return {cost, bet_cost};
 }
 
-long long FaceGroupSchedulerExp::CalcCost(int d1, int d2) {
+pair<long long, long long> FaceGroupSchedulerExp::CalcCost(int d1, int d2) {
    int E = graph_.GetEdgeList().size();
 
    rep(d, D_) {
@@ -277,7 +469,30 @@ long long FaceGroupSchedulerExp::CalcCost(int d1, int d2) {
    }
    cost = (long long)round(1.0 * cost / D_);
 
-   return cost;
+   // 面集合のmax betweennessに関するコスト
+   long long bet_cost = 0;
+
+   for (auto faces : face_group_list_) {
+      int L = faces.size();
+      vector<vector<long long>> day_betweenness(D_);
+
+      rep(f, L) {
+         for (auto [b, e] : faces[f].GetEdgeList()) {
+            int d = edge_day_[e];
+            day_betweenness[d].emplace_back(b);
+         }
+      }
+
+      rep(d, D_) {
+         if (day_betweenness[d].empty()) continue;
+
+         auto max_day_bet = *max_element(day_betweenness[d].begin(), day_betweenness[d].end());
+
+         bet_cost += max_day_bet / 10;
+      }
+   }
+
+   return {cost, bet_cost};
 }
 
 void FaceGroupSchedulerExp::SetDayEdge(int from_d, int to_d, int e) {
@@ -290,7 +505,7 @@ void FaceGroupSchedulerExp::SetDayEdge(int from_d, int to_d, int e) {
    bypass_set_.AddEdge(to_d, e);
 }
 
-FaceGroupSA_Trans FaceGroupSchedulerExp::GenerateTransition() {
+FaceGroupSA_Trans FaceGroupSchedulerExp::GenerateTransition(int iter) {
    int E = graph_.GetEdgeList().size();
 
    // 工事辺数が超過している場合は解消する遷移を生成する
@@ -308,28 +523,37 @@ FaceGroupSA_Trans FaceGroupSchedulerExp::GenerateTransition() {
          int next_d = avail_day_list[ind];
 
          rep(e, E) {
-            if (edge_day_[e] == d && day_avail_edge_bit_[next_d][e]) {
+            if (edge_day_[e] == d) {
                return {e, d, next_d};
             }
          }
       }
    }
 
-   int e = -1, cnt = 0;
+   int e = -1;
+   int progress = min(100, 100 * iter / 2000);
+   int select_rnd = XorShift() % 100;
 
-   while (true) {
+   if (select_rnd < progress) {
+      // 全体からランダムに選択
       int rand_g = XorShift() % sche_face_group_;
       int rand_f = XorShift() % face_group_list_[rand_g].size();
       int rand_E = face_group_list_[rand_g][rand_f].EdgeCount();
       int ind = XorShift() % rand_E;
       int rand_e = face_group_list_[rand_g][rand_f].GetEdgeList()[ind].second;
-      cnt++;
-
-      if (cnt >= 100) break;
-      // if (avail_one_edge_[rand_e]) continue;
 
       e = rand_e;
-      break;
+   } else {
+      // 上位20Face Groupから選択
+      int select_group_size = min(50, sche_face_group_);
+
+      int rand_g = XorShift() % select_group_size;
+      int rand_f = XorShift() % face_group_list_[rand_g].size();
+      int rand_E = face_group_list_[rand_g][rand_f].EdgeCount();
+      int ind = XorShift() % rand_E;
+      int rand_e = face_group_list_[rand_g][rand_f].GetEdgeList()[ind].second;
+
+      e = rand_e;
    }
 
    if (e == -1) {
@@ -342,7 +566,6 @@ FaceGroupSA_Trans FaceGroupSchedulerExp::GenerateTransition() {
 
    rep(d, D_) {
       if (d == cur_d) continue;
-      // if (!day_avail_edge_bit_[d][e]) continue;
       if (day_construction_count_[d] >= K_) continue;
 
       avail_day_list.emplace_back(d);
@@ -409,11 +632,9 @@ pair<int, EdgeBit> FaceGroupSchedulerExp::CalcMaxPriorityDay(const EdgeBit &sche
          while (!que_list[f].empty()) {
             auto [b, e] = que_list[f].top();
 
-            if (day_avail_edge_bit_[d][e]) {
-               top_edge = e;
-               top_b = b;
-               break;
-            }
+            top_edge = e;
+            top_b = b;
+            break;
 
             que_list[f].pop();
             skipped_edge.emplace_back(b, e);
@@ -442,12 +663,14 @@ vector<int> FaceGroupSchedulerExp::MakeSchedule(int sche_face_group) {
    int E = graph_.GetEdgeList().size();
    sche_face_group_ = min(sche_face_group, (int)face_group_list_.size());
    uniform_real_distribution<> uniform_dist(0.0, 1.0);
-   static constexpr int kMaxCount = 0;  // 1 * 1000;
+   static constexpr int kMaxCount = 10 * 1000;
+   static constexpr int kMaxTime = 2000 * 1000 - 300;
 
    // InitializeRandom();
    Initialize();
-   int cur_cost = CalcCost();
-   int best_cost = cur_cost;
+   // auto [cur_cost, cur_bet] = CalcCost();
+   long long cur_cost = 100000000;
+   long long best_cost = cur_cost;
    BypassSet best_bypass_set = bypass_set_;
 
    vector<int> best_edge_day = edge_day_;
@@ -463,11 +686,16 @@ vector<int> FaceGroupSchedulerExp::MakeSchedule(int sche_face_group) {
          break;
       }
 
+      if (ElapsedTime() > kMaxTime) {
+         // cerr << ElapsedTime() << endl;
+         break;
+      }
+
       const double progress = min(1.0 * i / kMaxCount, 1.0);
       const double temp = max_temp_ + (min_temp_ - max_temp_) * progress;
 
       // 遷移
-      auto [trans_e, from_d, to_d] = GenerateTransition();
+      auto [trans_e, from_d, to_d] = GenerateTransition(i);
 
       if (from_d == to_d) {
          continue;
@@ -478,21 +706,17 @@ vector<int> FaceGroupSchedulerExp::MakeSchedule(int sche_face_group) {
          break;
       }
 
-      MakeTrans(trans_e, from_d, to_d);
-
-      // debug(trans_e, from_d, to_d);
-      auto trans_cost = CalcCost(from_d, to_d);
-
-      auto delta_improve = cur_cost - trans_cost;
-      // debug(i, best_cost, cur_cost, delta_improve);
+      auto estim_delta = CalcEstimCost(trans_e, from_d, to_d);
+      //     auto estim_delta = CalcEstimCostByCenter(trans_e, from_d, to_d);
+      // auto estim_delta = CalcEstimCostByPoints(trans_e, from_d, to_d);
       bool search_update = false;
 
-      if (delta_improve >= 0) {
+      if (estim_delta >= 0) {
          // 更新できる場合は必ず遷移する
          search_update = true;
       } else {
          // 悪化している場合も一定確率で更新する
-         double prob = exp(delta_improve / temp);
+         double prob = exp(estim_delta / temp);
          double rnd = uniform_dist(mt_);
 
          if (prob > rnd) {
@@ -502,17 +726,30 @@ vector<int> FaceGroupSchedulerExp::MakeSchedule(int sche_face_group) {
 
       if (!search_update) {
          // 元に戻す
-         MakeTrans(trans_e, to_d, from_d);
-         CalcCost(from_d, to_d);
          continue;
       }
 
-      cur_cost -= delta_improve;
+      MakeTrans(trans_e, from_d, to_d);
+
+      // debug(trans_e, from_d, to_d);
+      // auto [trans_cost, trans_bet] = CalcCost(from_d, to_d);
+
+      // auto delta_improve = cur_cost - trans_cost;
+      // auto delta_improve_bet = cur_bet - trans_bet;
+
+      // debug(i, delta_improve, estim_delta);
+      // debug(i, estim_delta);
+
+      // debug(i, best_cost, cur_cost, cur_bet, delta_improve, delta_improve_bet);
+
+      // cur_cost -= delta_improve;
+      cur_cost -= estim_delta;
+      // cur_bet -= delta_improve_bet;
 
       if (chmin(best_cost, cur_cost)) {
          best_edge_day = edge_day_;
          best_bypass_set = bypass_set_;
-         debug(i, best_cost, cur_cost, delta_improve);
+         debug(i, best_cost, cur_cost);
       }
    }
 
@@ -538,8 +775,8 @@ vector<int> FaceGroupSchedulerExp::MakeSchedule(int sche_face_group) {
       schedule[e] = edge_day_[e] + 1;
    }
 
-   debug(day_construction_count_);
-   OutputInfo();
+   // debug(day_construction_count_);
+   // OutputInfo();
 
    return schedule;
 }
@@ -550,8 +787,6 @@ vector<int> FaceGroupSchedulerExp::MakeScheduleOld(const vector<Faces> &face_gro
    auto top_edge = [&, this](int d, priority_queue<EdgePriority> &que) {
       while (!que.empty()) {
          int e = que.top().second;
-
-         if (!day_avail_edge_bit_[d][e]) continue;
 
          if (scheduled[e]) {
             que.pop();

@@ -98,7 +98,7 @@ FaceGroup::FaceGroup(int N, int D)
 }
 
 vector<Faces> FaceGroup::MakeGroup() {
-   Prep();
+   Prep(false);
    GenerateFaces();  // 面の生成
 
    int E = edge_list_.size();
