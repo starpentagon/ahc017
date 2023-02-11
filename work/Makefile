@@ -6,18 +6,15 @@ CC = ccache g++
 CFLAGS = -Wall --std=c++17 -O2 -DLOCAL
 #CFLAGS = -pg -g -Wall --std=c++17 -O0
 
-ALL: main.o Graph.o DualGraph.o FaceGroup.o FaceGroupSchedulerExp.o UnionFind.o ConnectionSet.o XorShift.o BypassSet.o BypassSetScheduler.o ShortestTree.o
+ALL: main.o Graph.o DualGraph.o FaceGroup.o FaceGroupSchedulerExp.o UnionFind.o XorShift.o ShortestTree.o
 	$(CC) $(CFLAGS) -o main \
 	main.o \
-	BypassSet.o \
-	BypassSetScheduler.o \
 	Graph.o \
 	FaceGroup.o \
 	FaceGroupSchedulerExp.o \
 	DualGraph.o \
 	ShortestTree.o \
 	UnionFind.o \
-	ConnectionSet.o \
 	XorShift.o \
 	
 clean:

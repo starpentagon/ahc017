@@ -1,5 +1,6 @@
 #pragma once
 
+#include <map>
 #include "Graph.hpp"
 
 // nodeを始点とする最短路木を管理する
@@ -16,6 +17,7 @@ class ShortestTree
    void AddEdge(int u, int v, long long w) {
       Graph::AddEdge(u, v, w);
    }
+
    void AddEdge(int e);
    void DelEdge(int e);
 

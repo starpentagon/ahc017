@@ -70,7 +70,6 @@ class Graph {
       return N_;
    }
 
-  protected:
    int N_;
 
    // 最短路木を構築する

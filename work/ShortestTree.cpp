@@ -126,13 +126,17 @@ void ShortestTree::AddEdge(int e) {
    auto dv = min_dist_tree_[v].first;
    vector<int> nodes;
 
-   if (chmin(min_dist_tree_[u].first, dv + w)) {
+   if (min_dist_tree_[u].first > dv + w) {
       nodes.emplace_back(u);
+
+      min_dist_tree_[u].first = dv + w;
       min_dist_tree_[u].second = v;
    }
 
-   if (chmin(min_dist_tree_[v].first, du + w)) {
+   if (min_dist_tree_[v].first > du + w) {
       nodes.emplace_back(v);
+
+      min_dist_tree_[v].first = du + w;
       min_dist_tree_[v].second = u;
    }
 
@@ -167,6 +171,7 @@ void ShortestTree::DelEdge(int e) {
    // 子の最短路木をクリアする
    auto dfs = [&](auto dfs, int node, int p) -> void {
       auto cur_dist = min_dist_tree_[node].first;
+
       min_dist_tree_[node] = NodeInfo(DIST_INF, -1);
 
       node_set.insert(node);
@@ -194,6 +199,7 @@ void ShortestTree::DelEdge(int e) {
    }
 
    UpdateMinDistTree(nodes);
+   return;
 }
 
 long long ShortestTree::CalcTotalDist() const {

@@ -1,0 +1,4 @@
+Init
+Cost=24439726 DisconCnt=0 OverK=3 InBypass=455 
+Cost=24439726 DisconCnt=0 OverK=3 InBypass=455 
+Cost=24439726 DisconCnt=0 OverK=3 InBypass=455 

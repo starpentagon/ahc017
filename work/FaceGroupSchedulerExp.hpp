@@ -29,11 +29,6 @@ class FaceGroupSchedulerExp {
 
    // 辺ごとの工事日を決める
    std::vector<int> MakeSchedule(int sche_face_group);
-   std::vector<int> MakeScheduleOld(const std::vector<Faces>& face_group_list);
-
-   const BypassSet& GetBypassSet() const {
-      return bypass_set_;
-   }
 
    int GetIterCount() const {
       return iter_count_;
@@ -93,7 +88,6 @@ class FaceGroupSchedulerExp {
    std::vector<long long> day_cost_;  // 日別のコスト
 
    std::chrono::system_clock::time_point start_time_;
-   BypassSet bypass_set_;
 
    int iter_count_;
 
